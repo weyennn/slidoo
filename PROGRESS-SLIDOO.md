@@ -5,6 +5,11 @@
 > Pekerjaan Google login **belum ada di sini** — ada di server `/home/magangbtd/slidoo`,
 > branch `feature/google-login`, commit terakhir `3b577e8`. Sinkronkan dulu sebelum
 > menyunting di lokal.
+>
+> **Kondisi terkini di server:** `publish.mjs` sudah **tidak identik** dengan `3b577e8` —
+> ada patch escape regex pada `MANAGE_PANEL` yang belum di-commit. Status sambungan
+> `MY_DECKS` ke perakitan halaman belum diketahui saat sesi ditutup. Cek dulu:
+> `git status --short`, `grep -n 'MY_DECKS' server/src/publish.mjs`, `grep -n 'html.replace' server/src/publish.mjs`.
 
 ## Selesai & terbukti (di server, terdeploy)
 
