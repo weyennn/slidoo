@@ -1,23 +1,24 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine AS build
+# One Node process serves everything: the deck site, the upload page and its
+# API. It builds the static site at start-up, so the image has no separate
+# build stage and no nginx.
+FROM node:22-alpine
 WORKDIR /app
 
-# Install Slidoo dependencies from the lockfile reproducibly.
+# Install dependencies from the lockfiles first so this layer is cached
+# until a dependency changes.
 COPY package.json package-lock.json ./
 RUN npm ci
+COPY server/package.json server/package-lock.json server/
+RUN npm ci --prefix server
 
 COPY . .
 ARG OPEN_SLIDE_BASE=/
-ENV OPEN_SLIDE_BASE=${OPEN_SLIDE_BASE}
-RUN npm run build
-
-FROM nginx:1.27-alpine AS runtime
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist/ /usr/share/nginx/html/
-# Temporary upload-page design preview (replaced when the real feature lands).
-COPY design/upload-preview.deploy.html /usr/share/nginx/html/upload-preview.html
-# Unhashed copies of the Gama fonts so the preview page can reference stable URLs.
-COPY assets/fonts/ /usr/share/nginx/html/fonts/
+ENV OPEN_SLIDE_BASE=${OPEN_SLIDE_BASE} \
+    HOST=0.0.0.0 \
+    PORT=8080
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# The first start builds the site, which can take a while on a small host.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
   CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+CMD ["node", "server/src/index.mjs"]

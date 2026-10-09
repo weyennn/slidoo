@@ -1,6 +1,6 @@
 # Slidoo Docker deployment
 
-Slidoo builds into a static site and is served by Nginx. No database or writable application data is required.
+Slidoo runs as one Node process (`server/src/index.mjs`). It builds the deck site at start-up, then serves the decks, the upload page at `/upload`, and its API. No database is required. Uploaded documents become files under `slides/`, so the container needs a writable workspace, and that is lost when the container is recreated unless you mount it.
 
 ## Build and run with Docker Compose
 
@@ -13,7 +13,7 @@ Slidoo builds into a static site and is served by Nginx. No database or writable
    docker compose ps
    ```
 
-4. Check `http://127.0.0.1:8080/healthz` locally. Route the `/slidoo/` prefix to this origin while preserving the prefix; the image's Nginx serves the SPA fallback and static assets. Confirm deep links and asset URLs through the public reverse proxy before announcing availability.
+4. Check `http://127.0.0.1:8080/healthz` locally. The first start builds the site, so allow up to a minute. Route the `/slidoo/` prefix to this origin while preserving the prefix; the server accepts requests with or without it. Confirm deep links and asset URLs through the public reverse proxy before announcing availability.
 5. To update, pull/release the intended source and run `docker compose up -d --build`. To stop, use `docker compose down` (there is no persistent application volume).
 
 `OPEN_SLIDE_BASE` is a build argument passed to `open-slide.config.ts` and must match the externally served prefix. It is not a runtime-only setting: changing it requires rebuilding the image. Use `/slidoo/` when the reverse proxy preserves the prefix (the default); use `/` if the proxy strips the prefix before forwarding.
@@ -31,6 +31,8 @@ The example above serves the app at `/slidoo/`; use the build argument `/` for r
 ## Release checks
 
 - Confirm the image build succeeds from a clean checkout.
-- Verify `/healthz`, the `/slidoo/` entry route, hashed JS/CSS/font/image assets, and a client-side deep link through the actual reverse proxy.
+- Verify `/healthz`, the `/slidoo/` entry route, `/slidoo/upload`, hashed JS/CSS/font/image assets, and a client-side deep link through the actual reverse proxy.
+- If the upload page is public, set `SLIDOO_UPLOAD_TOKEN` in `.env`, or anyone who can reach the site can create decks.
+- Set `SLIDOO_AI=on` and `ANTHROPIC_API_KEY` in `.env` to draft with Claude; without them the upload page uses the rule-based outline.
 - Check that requests under `/slidoo/` use the prefix in emitted asset URLs and browser navigation.
-- Keep this image stateless; do not mount the repository over `/usr/share/nginx/html` in production.
+- Do not mount the repository over `/app` in production: the image's `node_modules` and build would be hidden.
