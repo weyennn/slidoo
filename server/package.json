@@ -1,0 +1,19 @@
+{
+  "name": "slidoo-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Slidoo backend: turns an uploaded document into an open-slide deck.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "dev": "SLIDOO_MODE=dev node --watch src/index.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
+    "unpdf": "^1.8.1"
+  }
+}

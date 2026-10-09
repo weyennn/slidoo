@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unggah dokumen — Slidoo</title>
+<meta name="description" content="Unggah dokumen dan dapatkan draf deck presentasi bertema UGM." />
+<link rel="preload" href="fonts/Gama-Sans-Regular.otf" as="font" type="font/otf" crossorigin />
+<link rel="preload" href="fonts/Gama-Sans-Bold.otf" as="font" type="font/otf" crossorigin />
+<link rel="stylesheet" href="upload.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">S</span>
+    <span class="brand-name">Slidoo</span>
+  </div>
+  <a class="back" id="homeLink" href="./"><span aria-hidden="true">←</span> Semua deck</a>
+</header>
+
+<main>
+  <section class="work" aria-labelledby="heading">
+    <h1 id="heading">Dokumen masuk,<br /><em>deck keluar.</em></h1>
+    <p class="sub">Unggah dokumenmu. Slidoo menyusun drafnya, lalu kamu poles sebelum presentasi.</p>
+
+    <p class="banner" id="offline" role="alert" hidden>
+      Server Slidoo tidak bisa dihubungi, jadi dokumen belum bisa diproses. Muat ulang halaman ini setelah server berjalan.
+    </p>
+
+    <form id="form" novalidate>
+      <!-- step 1: the document -->
+      <div class="dropzone" id="dropzone">
+        <input class="visually-hidden" type="file" id="fileInput" aria-describedby="fileHelp fileError" />
+        <label class="dropzone-body" for="fileInput">
+          <span class="dz-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="11"/>
+              <polyline points="9 14 12 11 15 14"/>
+            </svg>
+          </span>
+          <span class="dz-title">Seret dokumen ke sini, atau <span class="dz-link">pilih file</span></span>
+          <span class="dz-sub" id="fileHelp">PDF, DOCX, TXT, atau MD. Maksimal 20 MB.</span>
+        </label>
+      </div>
+
+      <div class="file-pill" id="filePill" hidden>
+        <span class="file-badge" id="fileBadge" aria-hidden="true">PDF</span>
+        <span class="file-meta">
+          <span class="file-name" id="fileName"></span>
+          <span class="file-size" id="fileSize"></span>
+        </span>
+        <button class="file-remove" id="fileRemove" type="button" aria-label="Hapus file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <p class="field-error" id="fileError" role="alert" hidden></p>
+
+      <!-- step 2: options -->
+      <div class="options">
+        <div class="field">
+          <label for="title">Judul <span class="optional">(opsional)</span></label>
+          <input id="title" name="title" type="text" maxlength="110" autocomplete="off" placeholder="Diambil dari dokumen" />
+        </div>
+        <div class="field">
+          <label for="pages">Jumlah halaman</label>
+          <select id="pages" name="pages">
+            <option value="auto" selected>Otomatis</option>
+            <option value="5">5 halaman</option>
+            <option value="8">8 halaman</option>
+            <option value="12">12 halaman</option>
+            <option value="15">15 halaman</option>
+          </select>
+        </div>
+
+        <fieldset class="field full">
+          <legend>Tema</legend>
+          <div class="segmented" id="themes">
+            <label class="seg">
+              <input class="visually-hidden" type="radio" name="theme" value="ugm-official" checked />
+              <span class="seg-face"><i class="swatch swatch-official" aria-hidden="true"></i>Official</span>
+            </label>
+            <label class="seg">
+              <input class="visually-hidden" type="radio" name="theme" value="ugm-midnight" />
+              <span class="seg-face"><i class="swatch swatch-midnight" aria-hidden="true"></i>Midnight</span>
+            </label>
+            <label class="seg">
+              <input class="visually-hidden" type="radio" name="theme" value="ugm-heritage" />
+              <span class="seg-face"><i class="swatch swatch-heritage" aria-hidden="true"></i>Heritage</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="field full" id="tokenField" hidden>
+          <label for="token">Kode akses</label>
+          <input id="token" name="token" type="password" autocomplete="off" aria-describedby="tokenHelp" />
+          <p class="field-help" id="tokenHelp">Diberikan oleh pengelola Slidoo.</p>
+        </div>
+      </div>
+
+      <button class="cta" id="cta" type="submit" aria-describedby="ctaHint">
+        Buat draf slide <span class="arrow" aria-hidden="true">→</span>
+      </button>
+      <p class="cta-hint" id="ctaHint">Pilih dokumen dulu untuk mulai.</p>
+    </form>
+
+    <!-- shown while a deck is being made, and when it is ready or has failed -->
+    <section class="progress" id="progress" aria-labelledby="progressTitle" hidden>
+      <h2 id="progressTitle" tabindex="-1">Menyusun deck…</h2>
+      <p class="progress-file" id="progressFile"></p>
+      <div class="bar" id="uploadBar" role="progressbar" aria-label="Unggahan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span class="bar-fill" id="uploadBarFill"></span>
+      </div>
+      <ol class="steps" id="steps">
+        <li data-step="uploading">Mengunggah dokumen</li>
+        <li data-step="extracting">Membaca isi dokumen</li>
+        <li data-step="outlining">Menyusun kerangka slide</li>
+        <li data-step="writing">Menulis halaman</li>
+        <li data-step="building">Menerbitkan deck</li>
+      </ol>
+      <p class="progress-status" id="progressStatus" role="status" aria-live="polite"></p>
+      <ul class="warnings" id="warnings" hidden></ul>
+      <div class="progress-actions">
+        <a class="cta cta-link" id="openDeck" href="#" hidden>Buka deck <span class="arrow" aria-hidden="true">→</span></a>
+        <button class="ghost" id="again" type="button" hidden>Unggah dokumen lain</button>
+        <button class="ghost" id="retry" type="button" hidden>Coba lagi</button>
+      </div>
+    </section>
+  </section>
+
+  <aside class="preview" id="preview" data-theme="ugm-official" aria-labelledby="previewLabel">
+    <h2 class="preview-label" id="previewLabel">Hasilnya seperti ini</h2>
+    <div class="slide-stack" aria-hidden="true">
+      <div class="mini-slide ms-cover"><i class="ms-title"></i><i class="ms-sub"></i><i class="ms-accent"></i><i class="ms-bar"></i></div>
+      <div class="mini-slide ms-content"><i class="ms-eyebrow"></i><i class="ms-title"></i><i class="ms-line"></i><i class="ms-line"></i><i class="ms-line"></i><i class="ms-bar"></i></div>
+      <div class="mini-slide ms-closing"><i class="ms-title"></i><i class="ms-bar"></i></div>
+    </div>
+    <p class="preview-note" id="previewNote"></p>
+    <p class="preview-note" id="previewEngine"></p>
+  </aside>
+</main>
+
+<script src="upload.js" defer></script>
+</body>
+</html>

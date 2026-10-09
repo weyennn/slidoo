@@ -11,3 +11,6 @@ uploads/
 outputs/
 results/
 backups/
+
+# Slidoo server build output (generated)
+.slidoo/
