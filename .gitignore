@@ -1,0 +1,13 @@
+node_modules
+dist
+.DS_Store
+
+# Runtime secrets and generated data
+.env
+.env.*
+!.env.example
+data/
+uploads/
+outputs/
+results/
+backups/

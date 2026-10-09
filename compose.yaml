@@ -1,0 +1,17 @@
+services:
+  slidoo:
+    build:
+      context: .
+      args:
+        OPEN_SLIDE_BASE: ${OPEN_SLIDE_BASE:-/}
+    image: slidoo:local
+    container_name: slidoo
+    restart: unless-stopped
+    ports:
+      - "${OPEN_SLIDE_BIND:-127.0.0.1}:${OPEN_SLIDE_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
