@@ -33,6 +33,6 @@ The example above serves the app at `/slidoo/`; use the build argument `/` for r
 - Confirm the image build succeeds from a clean checkout.
 - Verify `/healthz`, the `/slidoo/` entry route, `/slidoo/upload`, hashed JS/CSS/font/image assets, and a client-side deep link through the actual reverse proxy.
 - If the upload page is public, set `SLIDOO_UPLOAD_TOKEN` in `.env`, or anyone who can reach the site can create decks.
-- Set `SLIDOO_AI=on` and `SLIDOO_AI_BASE_URL` (an OpenAI-compatible endpoint, e.g. 9router) in `.env` to draft with AI; without them the upload page uses the rule-based outline.
+- Set `SLIDOO_AI=on` and `ANTHROPIC_API_KEY` in `.env` to draft with Claude; without them the upload page uses the rule-based outline.
 - Check that requests under `/slidoo/` use the prefix in emitted asset URLs and browser navigation.
 - Do not mount the repository over `/app` in production: the image's `node_modules` and build would be hidden.

@@ -22,7 +22,7 @@ export function loadConfig(env = process.env) {
   const mode = env.SLIDOO_MODE === 'dev' ? 'dev' : 'prod';
   const base = normalizeBase(env.OPEN_SLIDE_BASE);
   const aiSetting = (env.SLIDOO_AI || 'auto').toLowerCase();
-  const hasCredentials = Boolean(env.SLIDOO_AI_BASE_URL);
+  const hasCredentials = Boolean(env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN);
   return {
     mode,
     root: ROOT,
@@ -40,10 +40,7 @@ export function loadConfig(env = process.env) {
     trustProxy: env.SLIDOO_TRUST_PROXY === '1',
     ai: {
       enabled: aiSetting === 'on' || (aiSetting !== 'off' && hasCredentials),
-      // OpenAI-compatible chat completions endpoint, e.g. a 9router URL.
-      baseUrl: env.SLIDOO_AI_BASE_URL || 'http://localhost:20128/v1',
-      apiKey: env.SLIDOO_AI_API_KEY || '',
-      model: env.SLIDOO_MODEL || 'gemini/gemini-3.7-flash',
+      model: env.SLIDOO_MODEL || 'claude-opus-5-5',
       // Longer documents are still accepted; the job reports that only this
       // much text was sent to the model.
       maxInputChars: positiveNumber(env.SLIDOO_AI_MAX_CHARS, 400_000),

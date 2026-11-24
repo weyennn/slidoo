@@ -7,7 +7,6 @@ services:
     image: slidoo:local
     container_name: slidoo
     restart: unless-stopped
-    env_file: .env
     ports:
       - "${OPEN_SLIDE_BIND:-127.0.0.1}:${OPEN_SLIDE_PORT:-8080}:8080"
     healthcheck:
