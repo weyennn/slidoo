@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { blocksToText } from './extract.mjs';
 import { LIMITS, normalizeOutline } from './outline.mjs';
 
@@ -52,7 +51,9 @@ Every slide also has an "eyebrow" (a short label under ${LIMITS.eyebrow} charact
 
 "notes" are speaker notes: two to four sentences the presenter can say aloud for that slide, including the specifics (figures, names, citations) that are too detailed for the slide itself.
 
-Write in the language of the document. Take every claim, number and name from the document; when it does not say something, leave it out. Skip front matter and back matter such as approval pages, tables of contents, acknowledgements and reference lists. Vary the layouts where the content supports it, since a deck of nothing but bullet lists is tiring to watch.`;
+Write in the language of the document. Take every claim, number and name from the document; when it does not say something, leave it out. Skip front matter and back matter such as approval pages, tables of contents, acknowledgements and reference lists. Vary the layouts where the content supports it, since a deck of nothing but bullet lists is tiring to watch.
+
+Reply with the JSON outline only. No prose, no code fences.`;
 
 function userPrompt({ text, filename, pages, title, truncated }) {
   const count =
@@ -68,51 +69,81 @@ function userPrompt({ text, filename, pages, title, truncated }) {
   return `<document filename=${JSON.stringify(filename)}>\n${text}\n</document>\n\n${count} ${titleLine}${note}`;
 }
 
+/** Strip a ```json fence if the model wrapped its answer in one. */
+function stripFence(text) {
+  const fenced = text.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced ? fenced[1] : text;
+}
+
 /**
- * Ask Claude for the outline. Throws on any failure; the caller falls back to
- * the rule-based outline.
+ * Ask the configured OpenAI-compatible router (e.g. 9router) for the outline.
+ * Throws on any failure; the caller falls back to the rule-based outline.
  * @returns {Promise<{ outline: import('./outline.mjs').Outline, truncated: boolean }>}
  */
 export async function aiOutline(doc, { pages, title, filename, config, signal }) {
-  const client = new Anthropic();
   const full = blocksToText(doc.blocks);
   const truncated = full.length > config.ai.maxInputChars;
   const text = truncated ? full.slice(0, config.ai.maxInputChars) : full;
 
-  const stream = client.beta.messages.stream(
-    {
-      model: config.ai.model,
-      max_tokens: 32000,
-      // A request the safety classifiers decline is re-run on the fallback
-      // model Anthropic recommends for that refusal category.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: OUTLINE_SCHEMA } },
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt({ text, filename, pages, title: title || '', truncated }) }],
-    },
-    { signal },
-  );
-  const message = await stream.finalMessage();
+  const url = `${config.ai.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (config.ai.apiKey) headers.Authorization = `Bearer ${config.ai.apiKey}`;
 
-  if (message.stop_reason === 'refusal') throw new Error('model declined the request');
-  if (message.stop_reason === 'max_tokens') throw new Error('model output was cut off');
-  const json = message.content.find((block) => block.type === 'text')?.text;
-  if (!json) throw new Error('model returned no text');
+  const body = {
+    model: config.ai.model,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt({ text, filename, pages, title: title || '', truncated }) },
+    ],
+    temperature: 0.3,
+    max_tokens: 8192,
+    stream: false,
+    // Routers that don't support structured outputs ignore this field; the
+    // system prompt also asks for bare JSON as a fallback.
+    response_format: { type: 'json_schema', json_schema: { name: 'outline', schema: OUTLINE_SCHEMA, strict: true } },
+  };
 
-  const outline = normalizeOutline(JSON.parse(json), { pages, fallbackTitle: title || doc.title || 'Presentasi' });
+  let response;
+  try {
+    response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });
+  } catch (error) {
+    throw new AiError('connection', error.message);
+  }
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new AiError('http', detail.slice(0, 300), response.status);
+  }
+
+  const data = await response.json();
+  const choice = data?.choices?.[0];
+  if (choice?.finish_reason === 'length') throw new AiError('truncated', 'model output was cut off');
+  const content = choice?.message?.content;
+  if (!content || !content.trim()) throw new AiError('empty', 'model returned no text');
+
+  const outline = normalizeOutline(JSON.parse(stripFence(content)), {
+    pages,
+    fallbackTitle: title || doc.title || 'Presentasi',
+  });
   if (title) outline.title = title;
   return { outline, truncated };
 }
 
+class AiError extends Error {
+  constructor(kind, message, status) {
+    super(message);
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
 /** A short reason for the server log and the job's warning list. */
 export function describeAiError(error) {
-  if (error instanceof Anthropic.AuthenticationError) return 'kunci API tidak valid';
-  if (error instanceof Anthropic.PermissionDeniedError) return 'kunci API tidak punya akses ke model';
-  if (error instanceof Anthropic.NotFoundError) return 'model tidak ditemukan';
-  if (error instanceof Anthropic.RateLimitError) return 'batas pemakaian API tercapai';
-  if (error instanceof Anthropic.BadRequestError) return 'permintaan ditolak API';
-  if (error instanceof Anthropic.APIConnectionError) return 'layanan AI tidak bisa dihubungi';
-  if (error instanceof Anthropic.APIError) return `layanan AI bermasalah (HTTP ${error.status})`;
+  if (!(error instanceof AiError)) return 'layanan AI mengembalikan hasil yang tidak bisa dipakai';
+  if (error.kind === 'connection') return 'layanan AI tidak bisa dihubungi';
+  if (error.kind === 'truncated') return 'jawaban AI terpotong pada batas keluaran';
+  if (error.status === 401 || error.status === 403) return 'kunci API tidak valid atau tidak punya akses';
+  if (error.status === 404) return 'model tidak ditemukan';
+  if (error.status === 429) return 'batas pemakaian API tercapai';
+  if (error.status) return `layanan AI bermasalah (HTTP ${error.status})`;
   return 'layanan AI mengembalikan hasil yang tidak bisa dipakai';
 }
